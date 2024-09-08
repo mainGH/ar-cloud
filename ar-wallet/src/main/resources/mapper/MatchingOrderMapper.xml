@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.ar.wallet.mapper.MatchingOrderMapper">
+
+    <update id="updateOrderStatusByOrderNo">
+        update matching_order set status = #{status}
+        <if test="appealType == 1">
+            where payment_platform_order = #{orderNo}
+        </if>
+        <if test="appealType == 2">
+            where collection_platform_order = #{orderNo}
+        </if>
+    </update>
+
+    <select id="selectMatchingOrderByWithdrawOrder" resultType="org.ar.wallet.entity.MatchingOrder">
+        SELECT * FROM matching_order where payment_platform_order = #{withdrawOrder}
+    </select>
+
+    <select id="fethchAmountErrorNum" resultType="java.lang.Long">
+        select IFNULL(count(1),0) from matching_order where  status = 11
+    </select>
+
+    <select id="matchSuccessNum" resultType="java.lang.Long">
+        select IFNULL(count(1),0) from matching_order where  payment_platform_order is not null and collection_platform_order is not null
+    </select>
+
+    <select id="selectMyPage" resultType="org.ar.common.pay.dto.RelationOrderDTO">
+        SELECT
+            *
+        FROM
+            (
+                SELECT
+                    p.member_id AS 'id',
+                        p.merchant_name AS 'merchantName',
+                        p.merchant_code AS 'merchantCode',
+                        p.platform_order AS 'sellOrderNo',
+                        m.member_id AS 'memberId',
+                        p.match_order AS 'matchOrder',
+                        c.platform_order AS 'buyOrderNo',
+                        p.amount AS 'amount',
+                        p.actual_amount AS 'actualAmount',
+                        p.order_status AS 'orderStatus',
+                        p.create_time AS 'createTime'
+                FROM
+                    payment_order p
+                        LEFT JOIN collection_order c ON p.matching_platform_order = c.matching_platform_order
+                        INNER JOIN member_info m ON c.member_id = m.id
+                WHERE 1 = 1
+
+        <if test="vo.relationsIp != null and vo.relationsIp != ''">
+          and  p.client_ip = #{vo.relationsIp}
+        </if>
+        <if test="vo.orderStatus != null and vo.orderStatus != ''">
+            and  p.order_status = #{vo.orderStatus}
+        </if>
+        <if test="vo.idSet != null and vo.idSet != ''">
+         and (p.member_id = #{vo.idSet} or p.merchant_name = #{vo.idSet} or m.member_id like CONCAT('%',#{vo.idSet},'%'))
+        </if>
+
+        <if test="vo.orderSet != null and vo.orderSet != ''">
+            and
+            (p.platform_order = #{vo.orderSet} or c.platform_order = #{vo.orderSet} or p.match_order = #{vo.orderSet})
+        </if>
+
+                UNION ALL
+                SELECT
+                    c.member_id AS 'id',
+                        c.merchant_name AS 'merchantName',
+                        c.merchant_code AS 'merchantCode',
+                        c.platform_order AS 'sellOrderNo',
+                        m.member_id AS 'memberId',
+                        p.match_order AS 'matchOrder',
+                        c.platform_order AS 'buyOrderNo',
+                        c.amount AS 'amount',
+                        c.actual_amount AS 'actualAmount',
+                        c.order_status AS 'orderStatus',
+                        c.create_time AS 'createTime'
+                FROM
+                    collection_order c
+                        LEFT JOIN payment_order p ON c.matching_platform_order = p.matching_platform_order
+                        INNER JOIN member_info m ON p.member_id = m.id
+        WHERE 1 = 1
+        <if test="vo.relationsIp != null and vo.relationsIp != ''">
+            and  c.client_ip = #{vo.relationsIp}
+        </if>
+        <if test="vo.orderStatus != null and vo.orderStatus != ''">
+            and  c.order_status = #{vo.orderStatus}
+        </if>
+        <if test="vo.idSet != null and vo.idSet != ''">
+            and (c.member_id = #{vo.idSet} or c.merchant_name = #{vo.idSet} or m.member_id like CONCAT('%',#{vo.idSet},'%'))
+        </if>
+
+        <if test="vo.orderSet != null and vo.orderSet != ''">
+            and
+            (c.platform_order = #{vo.orderSet} or p.platform_order = #{vo.orderSet} or p.match_order = #{vo.orderSet})
+        </if>
+            ) t
+        order by createTime  desc  limit #{page},#{size}
+    </select>
+
+    <select id="count" resultType="long">
+        SELECT
+        IFNULL(count(1),0)
+        FROM
+        (
+        SELECT
+        p.member_id AS 'id',
+        p.merchant_name AS 'merchantName',
+        p.merchant_code AS 'merchantCode',
+        p.platform_order AS 'sellOrderNo',
+        m.member_id AS 'memberId',
+        p.match_order AS 'matchOrder',
+        c.platform_order AS 'buyOrderNo',
+        p.amount AS 'amount',
+        p.actual_amount AS 'actualAmount',
+        p.order_status AS 'orderStatus',
+        p.create_time AS 'createTime'
+        FROM
+        payment_order p
+        LEFT JOIN collection_order c ON p.matching_platform_order = c.matching_platform_order
+        INNER JOIN member_info m ON c.member_id = m.id
+        WHERE 1 = 1
+
+        <if test="vo.relationsIp != null and vo.relationsIp != ''">
+            and  p.client_ip = #{vo.relationsIp}
+        </if>
+        <if test="vo.orderStatus != null and vo.orderStatus != ''">
+            and  p.order_status = #{vo.orderStatus}
+        </if>
+        <if test="vo.idSet != null and vo.idSet != ''">
+            and (p.member_id = #{vo.idSet} or p.merchant_name = #{vo.idSet} or m.member_id like CONCAT('%',#{vo.idSet},'%'))
+        </if>
+
+        <if test="vo.orderSet != null and vo.orderSet != ''">
+            and
+            (p.platform_order = #{vo.orderSet} or c.platform_order = #{vo.orderSet} or p.match_order = #{vo.orderSet})
+        </if>
+
+        UNION ALL
+        SELECT
+        c.member_id AS 'id',
+        c.merchant_name AS 'merchantName',
+        c.merchant_code AS 'merchantCode',
+        c.platform_order AS 'sellOrderNo',
+        m.member_id AS 'memberId',
+        p.match_order AS 'matchOrder',
+        c.platform_order AS 'buyOrderNo',
+        c.amount AS 'amount',
+        c.actual_amount AS 'actualAmount',
+        c.order_status AS 'orderStatus',
+        c.create_time AS 'createTime'
+        FROM
+        collection_order c
+        LEFT JOIN payment_order p ON c.matching_platform_order = p.matching_platform_order
+        INNER JOIN member_info m ON p.member_id = m.id
+        WHERE 1 = 1
+        <if test="vo.relationsIp != null and vo.relationsIp != ''">
+            and  c.client_ip = #{vo.relationsIp}
+        </if>
+        <if test="vo.orderStatus != null and vo.orderStatus != ''">
+            and  c.order_status = #{vo.orderStatus}
+        </if>
+        <if test="vo.idSet != null and vo.idSet != ''">
+            and (c.member_id = #{vo.idSet} or c.merchant_name = #{vo.idSet} or m.member_id like CONCAT('%',#{vo.idSet},'%'))
+        </if>
+
+        <if test="vo.orderSet != null and vo.orderSet != ''">
+            and
+            (c.platform_order = #{vo.orderSet} or p.platform_order = #{vo.orderSet} or p.match_order = #{vo.orderSet})
+        </if>
+        ) t
+    </select>
+</mapper>

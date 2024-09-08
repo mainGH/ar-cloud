@@ -1,0 +1,7 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+  org.ar.common.web.config.FeignConfig,\
+  org.ar.common.web.exception.GlobalExceptionHandler,\
+  org.ar.common.web.sentinel.DefaultBlockExceptionHandler,\
+  org.ar.common.web.log.HttpAspect,\
+  org.ar.common.web.sentinel.RequestOriginParserDefinition,\
+  org.ar.common.web.config.LocalDateTimeFormatConfig

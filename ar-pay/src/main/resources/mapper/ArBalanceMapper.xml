@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.ar.pay.mapper.ArBalanceMapper">
+
+
+    <resultMap id="BaseResultMap" type="org.ar.pay.entity.ArBalance">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <id property="balance" column="balance" jdbcType="DECIMAL"/>
+    </resultMap>
+
+    <select id="getCurrentBlanceByCurrentce" resultType="java.math.BigDecimal">
+       select balance from ar_balance where currence = #{currence} for update
+    </select>
+
+
+
+
+    <update id="updateBalanceByCurrence">
+       update ar_balance set balance = balance + #{amount} where currence =#{currence}
+
+    </update>
+
+
+</mapper>

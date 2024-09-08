@@ -1,0 +1,43 @@
+server:
+  port: 20008
+
+spring:
+  main:
+    allow-bean-definition-overriding: false
+  application:
+    name: ar-pay
+  cloud:
+    nacos:
+      username: @nacosUserName@
+      password: @nacosPassword@
+      # 注册中心
+      discovery:
+        namespace: @nacosNamespace@
+        server-addr: @nacosAddress@
+      # 配置中心
+      config:
+        server-addr: ${spring.cloud.nacos.discovery.server-addr}
+        file-extension: yaml
+        namespace: @nacosNamespace@
+        shared-configs[0]:
+          data-id: ar-common.yaml
+          refresh: true
+        extension-configs[0]:
+          data-id: ar-pay.yaml
+          refresh: true
+powerjob:
+  worker:
+    enabled: false
+    enable-test-mode: false
+    port: 27777
+    app-name: powerjob-worker-samples
+    protocol: http
+    store-strategy: disk
+    max-result-length: 4096
+    max-appended-wf-context-length: 4096
+    server-address: 127.0.0.1:7700
+logging:
+  file:
+    name: /var/log/javalog/ar-pay-current.log
+  level:
+    spring.: DEBUG

@@ -1,0 +1,60 @@
+server:
+  port: 20002
+  undertow:
+    threads:
+      io: 8
+    buffer-size: 1024
+    direct-buffers: true
+oss:
+  baseUrl: http://127.0.0.1:8848
+  endpoint: oss
+  accessKeyId: key
+  accessKeySecret: secret
+  bucketName: bucketName
+mybatis-plus:
+  mapper-locations: classpath*:/manager-mapper/*Mapper.xml
+  type-aliases-package: org.ar.manager.entity
+spring:
+  application:
+    name: ar-manager
+  main:
+    allow-bean-definition-overriding: false
+  cloud:
+    nacos:
+      # 注册中心
+      username: @nacosUserName@
+      password: @nacosPassword@
+      discovery:
+        server-addr: @nacosAddress@
+        namespace: @nacosNamespace@
+      # 配置中心
+      config:
+        server-addr: ${spring.cloud.nacos.discovery.server-addr}
+        file-extension: yaml
+        namespace: @nacosNamespace@
+        shared-configs[0]:
+          data-id: ar-common.yaml
+          refresh: true
+        extension-configs[0]:
+          data-id: ar-manager.yaml
+          refresh: true
+management:
+  health:
+    rabbit:
+      enabled: false
+  trace:
+    http:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+logging:
+  file:
+    name: /var/log/javalog/ar-manager-current.log
+    #name: C:/work/javalog/ar-manager-current.log
+  level:
+    spring.: INFO

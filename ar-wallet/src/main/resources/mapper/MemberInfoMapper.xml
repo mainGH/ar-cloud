@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.ar.wallet.mapper.MemberInfoMapper">
+
+    <resultMap id="MemberAuthMap" type="org.ar.common.pay.dto.MemberAuthDTO">
+        <id property="userId" column="userId" jdbcType="BIGINT"/>
+        <id property="memberId" column="memberId" jdbcType="VARCHAR"/>
+        <id property="firstLoginIp" column="firstLoginIp" jdbcType="VARCHAR"/>
+        <id property="memberType" column="memberType" jdbcType="VARCHAR"/>
+        <result property="username" column="username" jdbcType="VARCHAR"/>
+        <result property="password" column="password" jdbcType="VARCHAR"/>
+        <result property="status" column="status" jdbcType="BOOLEAN"/>
+        <collection property="roles" ofType="string" javaType="list">
+            <result column="roleCode"></result>
+        </collection>
+    </resultMap>
+
+    <select id="getByUsername" resultMap="MemberAuthMap">
+        select t1.id             userId,
+               t1.member_id      memberId,
+               t1.member_account username,
+               t1.member_type memberType,
+               t1.first_login_ip firstLoginIp,
+               t1.password,
+               t1.status,
+               'member' as       roleCode
+        from member_info t1
+        where (t1.member_account = #{userName} OR t1.email_account = #{userName} OR t1.mobile_number = #{userName})
+          and t1.deleted = 0
+    </select>
+
+    <select id="getMemberInfoById" resultType="org.ar.wallet.entity.MemberInfo">
+        select *
+        from member_info
+        where id = #{mid}
+    </select>
+
+    <update id="updateBalanceById">
+        update member_info
+        set balance = #{finalAmount}
+        <if test="frozenAmountFlag != null and frozenAmountFlag !=''">
+            ,bi_frozen_amount = #{frozenAmount}
+        </if>
+        where id = #{mid}
+    </update>
+
+    <update id="updateByMemberId">
+        UPDATE member_info
+        SET real_name = #{vo.realName},
+            authentication_status = #{vo.authenticationStatus},
+            id_card_number = #{vo.idCardNumber},
+            verification_by = #{vo.verificationBy},
+            id_card_image = #{vo.idCardImage},
+            face_photo = #{vo.facePhoto},
+            real_name_verification_time = now()
+        WHERE
+            id = #{vo.id}
+    </update>
+
+    <select id="selectMerchantInfoList" resultType="org.ar.common.pay.dto.MerchantActivationInfoDTO">
+        SELECT
+            count( merchant_code ) as activationTotalNum,
+            merchant_code as merchantCode,
+            merchant_name as merchantName,
+            sum(balance + frozen_amount + bi_frozen_amount) as balance
+        from member_info
+        WHERE
+            merchant_code IS NOT NULL
+        GROUP BY
+            merchant_code,
+            merchant_name
+    </select>
+
+    <select id="selectMemberTotalBalance" resultType="java.math.BigDecimal">
+        SELECT
+            sum(balance + frozen_amount + bi_frozen_amount)
+        from member_info
+        WHERE
+            merchant_code IS NOT NULL
+    </select>
+
+    <select id="selectActiveInfoList" resultType="org.ar.common.pay.dto.MerchantActivationInfoDTO">
+        SELECT
+            count( merchant_code ) AS activationTotalNum,
+            merchant_code AS merchantCode,
+            merchant_name AS merchantName,
+            'total' AS merchantType
+        FROM
+            member_info
+        WHERE
+            merchant_code IS NOT NULL
+        GROUP BY
+            merchant_code,
+            merchant_name
+
+        UNION
+
+
+        SELECT
+            count( merchant_code ) AS activationTotalNum,
+            merchant_code AS merchantCode,
+            merchant_name AS merchantName,
+            'day' AS merchantType
+        FROM
+            member_info
+        WHERE
+            merchant_code IS NOT NULL
+          AND DATE_FORMAT( create_time, '%Y-%m-%d' ) = #{dateStr}
+        GROUP BY
+            merchant_code,
+            merchant_name
+    </select>
+
+
+
+    <select id="selectActiveInfoMonthList" resultType="org.ar.common.pay.dto.MerchantActivationInfoDTO">
+        SELECT
+            count( merchant_code ) AS activationTotalNum,
+            merchant_code AS merchantCode,
+            merchant_name AS merchantName,
+            'day' AS merchantType
+        FROM
+            member_info
+        WHERE
+            merchant_code IS NOT NULL
+          AND DATE_FORMAT( create_time, '%Y-%m' ) = #{dateStr}
+        GROUP BY
+            merchant_code,
+            merchant_name
+    </select>
+
+    <select id="selectSumInfo" resultType="org.ar.wallet.entity.MemberInfo">
+        SELECT
+            IFNULL(sum( balance + frozen_amount + bi_frozen_amount ),0) as balance,
+            IFNULL(sum(total_buy_bonus),0) as totalBuyBonus,
+            IFNULL(sum(total_sell_bonus),0) as totalSellBonus,
+        merchant_code as merchantCode,
+            merchant_name as merchantName
+        FROM
+        member_info
+        WHERE
+        merchant_code <![CDATA[<> '']]>
+        GROUP BY
+        merchant_code, merchant_name
+    </select>
+
+    <select id="selectSumNumInfo" resultType="org.ar.wallet.entity.MemberInfo">
+        SELECT
+            count(1) AS balance,
+            member_type
+        FROM
+            member_info
+        GROUP BY
+            member_type
+    </select>
+
+    <select id="selectActiveNum" resultType="java.lang.Long">
+        SELECT
+            IFNULL(count( DISTINCT member_id ),0)
+        FROM
+        member_login_logs
+        WHERE
+        login_time <![CDATA[>=]]> #{startTime} and login_time <![CDATA[<=]]> #{endTime}
+    </select>
+
+    <select id="selectRealNameNum" resultType="java.lang.Long">
+        SELECT
+            IFNULL(count( 1 ),0)
+        FROM
+            member_info
+        WHERE
+            authentication_status =  1
+    </select>
+
+    <select id="selectBuyNum" resultType="java.lang.Long">
+        SELECT
+            IFNULL(count( 1 ),0)
+        FROM
+            member_info
+        WHERE
+            total_buy_success_amount > 0
+    </select>
+
+    <select id="selectSellNum" resultType="java.lang.Long">
+        SELECT
+            IFNULL(count( 1 ),0)
+        FROM
+            member_info
+        WHERE
+            total_sell_success_amount > 0
+    </select>
+
+    <select id="selectBuyAndSellNum" resultType="java.lang.Long">
+        SELECT
+            IFNULL(count( 1 ),0)
+        FROM
+            member_info
+        WHERE
+            total_sell_success_amount > 0 and total_buy_success_amount > 0
+    </select>
+
+    <select id="selectBuyUsdtNum" resultType="java.lang.Long">
+        SELECT
+            IFNULL(count( 1 ),0)
+        FROM
+            usdt_buy_order
+        WHERE
+            `status` = 7
+    </select>
+
+    <select id="selectBuyDisableFuture" resultType="java.lang.Long">
+        SELECT
+            IFNULL( count( 1 ), 0 )
+        FROM
+            member_info
+        WHERE
+            buy_status = 0
+    </select>
+
+    <select id="selectSellDisableFuture" resultType="java.lang.Long">
+        SELECT
+            IFNULL( count( 1 ), 0 )
+        FROM
+            member_info
+        WHERE
+            sell_status = 0
+    </select>
+
+    <select id="selectMemberInfoInfo" resultType="org.ar.wallet.entity.MemberInfo">
+        SELECT
+        m.username as merchantName,
+        m.`code` as merchantCode,
+        m.merchant_type as memberType,
+        count( 1 ) AS 	num, <!-- 会员数量 -->
+        IFNULL( sum( a.balance + a.frozen_amount + a.bi_frozen_amount ), 0 ) AS balance <!-- 会员ARB余额 -->
+        FROM
+        member_info a
+        LEFT JOIN merchant_info m ON a.merchant_code = m.`code`
+        WHERE
+        a.merchant_code <![CDATA[<> '']]>
+        GROUP BY
+        m.username,
+        m.`code`,
+        m.merchant_type
+    </select>
+
+
+    <select id="selectMerchantActiveNum" resultType="org.ar.wallet.entity.MemberInfo">
+        SELECT
+        IFNULL(count( DISTINCT m.member_id ),0) as num,
+        a.merchant_code as merchantCode
+        FROM
+        member_login_logs m LEFT JOIN member_info a ON m.member_id = a.id
+        WHERE
+        login_time <![CDATA[>=]]> #{startTime} and login_time <![CDATA[<=]]> #{endTime}
+        and a.merchant_code <![CDATA[<> '']]>
+        GROUP BY a.merchant_code
+    </select>
+
+    <select id="selectMerchantRealNameNum" resultType="org.ar.wallet.entity.MemberInfo">
+        SELECT
+        m.username as merchantName,
+        m.`code` as merchantCode,
+        IFNULL(count( 1 ),0) as num
+        FROM
+        member_info a
+        LEFT JOIN merchant_info m ON a.merchant_code = m.`code`
+        WHERE
+        a.merchant_code <![CDATA[<> '']]> and authentication_status =  1
+        GROUP BY
+        m.username,
+        m.`code`
+    </select>
+
+
+    <select id="selectMerchantBuyNum" resultType="org.ar.wallet.entity.MemberInfo">
+        SELECT
+        m.username as merchantName,
+        m.`code` as merchantCode,
+        IFNULL(count( 1 ),0) as num
+        FROM
+        member_info a
+        LEFT JOIN merchant_info m ON a.merchant_code = m.`code`
+        WHERE
+        a.merchant_code <![CDATA[<> '']]> and total_buy_success_amount <![CDATA[>]]> 0
+        GROUP BY
+        m.username,
+        m.`code`
+    </select>
+
+
+    <select id="selectMerchantSellNum" resultType="org.ar.wallet.entity.MemberInfo">
+        SELECT
+            m.username as merchantName,
+            m.`code` as merchantCode,
+            IFNULL(count( 1 ),0) as num
+        FROM
+            member_info a
+                LEFT JOIN merchant_info m ON a.merchant_code = m.`code`
+        WHERE
+            a.merchant_code <![CDATA[<> '']]> and total_sell_success_amount <![CDATA[>]]> 0
+        GROUP BY
+            m.username,
+            m.`code`
+    </select>
+
+    <select id="getRechargeInfo" resultType="org.ar.wallet.entity.MemberInfo">
+        SELECT
+        IFNULL(count(1),0) as rechargeNum,
+        IFNULL(sum(amount),0) as rechargeTotalAmount,
+        member_id as id
+        FROM
+        merchant_collect_orders
+        where  order_status = 2
+        <if test="list != null and list.size() > 0" > and member_id in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                #{item.id}
+            </foreach>
+        </if>
+        GROUP BY member_id
+
+    </select>
+
+    <select id="getWithdrawInfo" resultType="org.ar.wallet.entity.MemberInfo">
+        SELECT
+        IFNULL(count(1),0) as withdrawNum,
+        IFNULL(sum(amount),0) as withdrawTotalAmount,
+        member_id as id
+        FROM
+        merchant_payment_orders
+        where  order_status = 2
+        <if test="list != null and list.size() > 0" > and member_id in
+            <foreach collection="list" index="index" item="item" open="(" separator="," close=")">
+                #{item.id}
+            </foreach>
+        </if>
+        GROUP BY member_id
+    </select>
+
+    <update id="updateRechargeInfo">
+        <if test="list != null and list.size() > 0" >
+            <foreach collection="list" separator=";" item="item">
+                update member_info set
+                level = #{item.level}
+                where id = #{item.id};
+                INSERT INTO `ar_wallet`.`member_level_change` ( `mid`, `before_change`, `after_change`, `create_time`, `update_time` )
+                VALUES
+                (
+                #{item.id},
+                #{item.beforeLevel},
+                #{item.level},
+                NOW(),
+                NOW())
+            </foreach>
+            </if>
+    </update>
+
+    <update id="updateWithdrawInfo">
+        update member_info set withdraw_num = #{withdrawNum},withdraw_total_amount=#{withdrawTotalAmount} where id = #{id}
+    </update>
+
+    <select id="selectMyPage" resultType="org.ar.wallet.entity.MemberInfo">
+        SELECT * FROM member_info
+        <if test="userIdList != null and userIdList.size() > 0" >where id in
+            <foreach collection="userIdList" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+        order by id         limit #{page},#{size}
+    </select>
+
+    <select id="count" resultType="long">
+        select count(1) from member_info
+        <if test="userIdList != null and userIdList.size() > 0">where id in
+            <foreach collection="userIdList" index="index" item="item" open="(" separator="," close=")">
+                #{item}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="selectTaskReward" resultType="org.ar.wallet.entity.MemberInfo">
+        SELECT
+            IFNULL( sum( total_task_rewards ), 0 ) AS totalTaskRewards,
+            merchant_code AS merchantCode,
+            merchant_name AS merchantName
+        FROM
+            member_info
+            where merchant_code <![CDATA[<> '']]>
+        GROUP BY
+            merchant_code,
+            merchant_name
+    </select>
+
+    <update id="updateMemberInfoStatus">
+        UPDATE member_info set `status` = #{status},buy_status = #{buyStatus}, sell_status =#{sellStatus}  where id = #{id}
+    </update>
+
+
+    <select id="getByAppUsername" resultMap="MemberAuthMap">
+        select t1.id             userId,
+               t1.member_id      memberId,
+               t1.member_account username,
+               t1.member_type memberType,
+               t1.first_login_ip firstLoginIp,
+               t1.password,
+               t1.status,
+               'app' as       roleCode
+        from member_info t1
+        where (t1.member_account = #{userName} OR t1.email_account = #{userName} OR t1.mobile_number = #{userName})
+          and t1.deleted = 0 and t1.member_type =4
+    </select>
+
+    <select id="getLevelNum" resultType="org.ar.common.pay.dto.MemberLevelInfoDTO">
+        SELECT
+            `level`,
+            IFNULL(count( 1 ),0) as num
+        FROM
+            member_info
+        WHERE
+            LEVEL IS NOT NULL
+        <if test="merchantCode != null and merchantCode !=''">
+            AND merchant_code = #{merchantCode}
+        </if>
+        GROUP BY
+            LEVEL
+    </select>
+
+    <select id="selectblackMemberNum" resultType="java.lang.Long">
+        select IFNULL(count(1),0) from member_black
+    </select>
+</mapper>

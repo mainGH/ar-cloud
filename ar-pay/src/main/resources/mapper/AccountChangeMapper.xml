@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.ar.pay.mapper.AccountChangeMapper">
+
+<!--    <update id="updateAccountChangeByOrder" parameterType="java.util.HashMap">-->
+<!--          update account_change set amount_change =#{realAmount} where order_no=#{orderno}-->
+
+<!--    </update>-->
+  <insert id="saveAccoutChange">
+          insert into account_change(merchant_code,currency,type,order_no,before_change,amount_change,) values ()
+  </insert>
+
+</mapper>
